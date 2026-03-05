@@ -1,0 +1,264 @@
+@import "@solana/wallet-adapter-react-ui/styles.css";
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap");
+
+:root {
+  --bg: #f7f3eb;
+  --panel: #fffdf8;
+  --card: #fff8ef;
+  --line: #dfd1be;
+  --text: #231f18;
+  --muted: #6d5d49;
+  --accent: #0f7b6c;
+  --accent-2: #cc6a2d;
+  --danger: #a43f26;
+  --success-bg: #e7f7f3;
+  --error-bg: #fde9e3;
+  --info-bg: #e7f0ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 15% 20%, #ffe0b8 0%, rgba(255, 224, 184, 0) 36%),
+    radial-gradient(circle at 80% 0%, #cdece6 0%, rgba(205, 236, 230, 0) 28%),
+    linear-gradient(180deg, #f7f3eb 0%, #f1e9dd 100%);
+  font-family: "Manrope", "Segoe UI", sans-serif;
+}
+
+code {
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+  word-break: break-all;
+}
+
+.main-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.escrow-page {
+  display: grid;
+  gap: 16px;
+}
+
+.hero {
+  background: linear-gradient(130deg, #fff8ec 0%, #f4f0e6 45%, #e4f6f2 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 35px rgba(58, 41, 18, 0.08);
+}
+
+.hero h1 {
+  margin: 6px 0 8px;
+  font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+}
+
+.hero p {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  padding: 16px;
+  box-shadow: 0 8px 26px rgba(48, 31, 12, 0.05);
+}
+
+.panel h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.panel p {
+  margin: 8px 0;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.notice {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  display: grid;
+  gap: 6px;
+}
+
+.notice strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.notice a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.notice-success {
+  background: var(--success-bg);
+  border-color: #97cfbf;
+}
+
+.notice-error {
+  background: var(--error-bg);
+  border-color: #d49d8d;
+}
+
+.notice-info {
+  background: var(--info-bg);
+  border-color: #9bb5e7;
+}
+
+.grid-form {
+  display: grid;
+  gap: 10px;
+}
+
+.grid-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+input,
+button {
+  font: inherit;
+}
+
+input {
+  border: 1px solid #cdbba2;
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: #fffcf6;
+}
+
+input:focus {
+  outline: 2px solid rgba(15, 123, 108, 0.32);
+  border-color: var(--accent);
+}
+
+button {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(120deg, #0f7b6c 0%, #159785 100%);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover:enabled {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(21, 151, 133, 0.3);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: linear-gradient(120deg, #cc6a2d 0%, #e07834 100%);
+}
+
+button.secondary:hover:enabled {
+  box-shadow: 0 6px 14px rgba(224, 120, 52, 0.28);
+}
+
+button.danger {
+  background: linear-gradient(120deg, #a43f26 0%, #bf4d30 100%);
+}
+
+button.danger:hover:enabled {
+  box-shadow: 0 6px 14px rgba(191, 77, 48, 0.28);
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.toolbar input {
+  min-width: 340px;
+  flex: 1;
+}
+
+.escrow-list {
+  display: grid;
+  gap: 12px;
+}
+
+.escrow-card {
+  background: var(--card);
+  border: 1px solid #d9c7b1;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.escrow-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.escrow-card p {
+  margin: 6px 0;
+}
+
+.card-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 840px) {
+  .grid-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-form > button {
+    grid-column: span 2;
+    width: fit-content;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-shell {
+    padding: 16px 12px 28px;
+  }
+
+  .toolbar input {
+    min-width: 100%;
+  }
+}
