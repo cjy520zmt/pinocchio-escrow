@@ -13,9 +13,11 @@ import {
 
 import { ESCROW_ACCOUNT_SIZE, ESCROW_PROGRAM_ID, ESCROW_SEED } from "@/lib/constants";
 
+// Token 数量、seed 等字段都来自链上 u64。
 const U64_MAX = (1n << 64n) - 1n;
 const TOKEN_ACCOUNT_AMOUNT_OFFSET = 64;
 
+// 与 `src/errors.rs` 的 EscrowError 一一对应。
 const ESCROW_ERROR_MESSAGES: Record<number, string> = {
   0: "缺少必要签名（MissingRequiredSignature）",
   1: "程序地址错误（InvalidProgram）",
@@ -39,6 +41,7 @@ export interface EscrowDecoded {
 }
 
 export interface EscrowState extends EscrowDecoded {
+  // 从 vault token account 读取的实时余额（mint_a）。
   vaultAmount: bigint;
 }
 
@@ -75,6 +78,7 @@ function ensureU64(value: bigint, label: string, allowZero = true): bigint {
   return value;
 }
 
+// 表单输入统一转成 bigint，并做 u64/非零校验。
 export function parseU64Input(input: string, label: string, allowZero = true): bigint {
   const trimmed = input.trim();
   if (trimmed.length === 0) {
@@ -93,6 +97,7 @@ function u64ToLeBuffer(value: bigint, label: string, allowZero = true): Buffer {
   return buffer;
 }
 
+// escrow PDA = ["escrow", maker, seed_le_bytes]。
 export function deriveEscrowPda(maker: PublicKey, seed: bigint): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [Buffer.from(ESCROW_SEED), maker.toBuffer(), u64ToLeBuffer(seed, "seed")],
@@ -100,6 +105,7 @@ export function deriveEscrowPda(maker: PublicKey, seed: bigint): [PublicKey, num
   );
 }
 
+// vault 是 escrow PDA 作为 owner 的 mint_a ATA。
 export function deriveVaultAta(escrow: PublicKey, mintA: PublicKey): PublicKey {
   return getAssociatedTokenAddressSync(
     mintA,
@@ -110,6 +116,7 @@ export function deriveVaultAta(escrow: PublicKey, mintA: PublicKey): PublicKey {
   );
 }
 
+// 按链上 `Escrow` 结构体固定偏移解码（见 src/state.rs）。
 export function decodeEscrowAccount(address: PublicKey, data: Buffer): EscrowDecoded {
   if (data.length !== ESCROW_ACCOUNT_SIZE) {
     throw new Error(`Escrow 账户大小错误，期望 ${ESCROW_ACCOUNT_SIZE}，实际 ${data.length}`);
@@ -142,6 +149,7 @@ function decodeTokenAmount(accountData: Buffer | null): bigint {
   return accountData.readBigUInt64LE(TOKEN_ACCOUNT_AMOUNT_OFFSET);
 }
 
+// 拉取程序下所有 escrow，并补齐每个 escrow 的 vault 实时余额。
 export async function fetchEscrows(
   connection: Connection,
   makerFilter?: PublicKey,
@@ -191,6 +199,7 @@ export function buildMakeTransaction(params: MakeTransactionParams): {
   data.writeBigUInt64LE(receive, 9);
   data.writeBigUInt64LE(amount, 17);
 
+  // keys 顺序必须严格匹配 `src/instructions/make.rs` 的解构顺序。
   const instruction = new TransactionInstruction({
     programId: ESCROW_PROGRAM_ID,
     keys: [
@@ -240,6 +249,7 @@ export function buildTakeTransaction(params: TakeTransactionParams): Transaction
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
+  // keys 顺序必须严格匹配 `src/instructions/take.rs` 的解构顺序。
   const instruction = new TransactionInstruction({
     programId: ESCROW_PROGRAM_ID,
     keys: [
@@ -273,6 +283,7 @@ export function buildRefundTransaction(params: RefundTransactionParams): Transac
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
+  // keys 顺序必须严格匹配 `src/instructions/refund.rs` 的解构顺序。
   const instruction = new TransactionInstruction({
     programId: ESCROW_PROGRAM_ID,
     keys: [
@@ -291,6 +302,7 @@ export function buildRefundTransaction(params: RefundTransactionParams): Transac
 }
 
 function collectErrorText(error: unknown): string {
+  // 尽量提取嵌套错误中的 message/logs/cause，便于给用户可读提示。
   const queue: unknown[] = [error];
   const seen = new Set<unknown>();
   const parts: string[] = [];
@@ -360,6 +372,7 @@ function collectErrorText(error: unknown): string {
 }
 
 function extractCustomCode(raw: string): number | null {
+  // 兼容 web3.js 常见报错格式：hex、decimal、InstructionError(Custom(x))。
   const hexMatch = raw.match(/custom program error: 0x([0-9a-f]+)/i);
   if (hexMatch) {
     return Number.parseInt(hexMatch[1], 16);

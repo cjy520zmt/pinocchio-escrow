@@ -13,8 +13,10 @@ interface WalletContextProviderProps {
 }
 
 export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children }) => {
+  // 当前示例默认面向 Devnet；如需 Mainnet 可在这里改网络与 RPC。
   const network = WalletAdapterNetwork.Devnet;
 
+  // 钱包适配器对象较重，保持引用稳定可减少不必要重渲染。
   const wallets = useMemo(
     () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
     [network],

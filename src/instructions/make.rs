@@ -12,6 +12,7 @@ use crate::{Escrow, EscrowError, ID};
 pub(crate) fn make(accounts: &[AccountView], data: &[u8]) -> ProgramResult {
     let ix = parse_create_ix_data(data)?;
 
+    // 账户顺序必须与客户端构造的 keys 完全一致。
     let [maker, escrow, mint_a, mint_b, maker_ata_a, vault, system_program, token_program, ..] = accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
@@ -24,8 +25,10 @@ pub(crate) fn make(accounts: &[AccountView], data: &[u8]) -> ProgramResult {
     assert_mint_account(mint_a, token_program)?;
     assert_mint_account(mint_b, token_program)?;
     assert_ata_account(maker_ata_a, maker, mint_a, token_program)?;
+    // vault 由 escrow PDA 作为 owner，地址应是 escrow 的 mint_a ATA。
     assert_ata_address(vault, escrow, mint_a, token_program)?;
 
+    // escrow PDA = ["escrow", maker, seed].
     let seed_bytes = ix.seed.to_le_bytes();
     let (expected_escrow, bump) =
         Address::find_program_address(&[ESCROW_SEED, maker.address().as_ref(), &seed_bytes], &ID);
@@ -42,6 +45,7 @@ pub(crate) fn make(accounts: &[AccountView], data: &[u8]) -> ProgramResult {
         Seed::from(&bump_bytes),
     ];
 
+    // 1) 创建 escrow 账户；2) 创建 vault ATA；3) 写入 escrow 状态。
     create_program_account(maker, escrow, &escrow_seeds, Escrow::LEN)?;
     init_ata(vault, mint_a, maker, escrow, system_program, token_program)?;
 
@@ -58,6 +62,7 @@ pub(crate) fn make(accounts: &[AccountView], data: &[u8]) -> ProgramResult {
         );
     }
 
+    // 把 maker 的 mint_a 转入 vault，完成托管“入金”。
     Transfer {
         from: maker_ata_a,
         to: vault,

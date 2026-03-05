@@ -28,6 +28,7 @@ interface ActionResult {
   detail?: string;
 }
 
+// 统一地址输入校验，避免把无效字符串传给交易构造逻辑。
 function parsePublicKey(value: string, label: string): PublicKey {
   try {
     return new PublicKey(value.trim());
@@ -44,6 +45,7 @@ function shortAddress(value: string, size = 6): string {
 }
 
 function explorerTxUrl(signature: string): string {
+  // 根据当前 RPC 自动拼接对应 cluster 的浏览器链接。
   const endpoint = RPC_ENDPOINT.toLowerCase();
   if (endpoint.includes("devnet")) {
     return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
@@ -70,16 +72,19 @@ export function EscrowClient() {
   const { connection } = useConnection();
   const { publicKey, connected, sendTransaction } = useWallet();
 
+  // 全局提示与当前按钮 loading。
   const [notice, setNotice] = useState<Notice | null>(null);
   const [lastSignature, setLastSignature] = useState<string | null>(null);
   const [activeActionKey, setActiveActionKey] = useState<string | null>(null);
 
+  // Make 表单输入。
   const [makeSeed, setMakeSeed] = useState("1");
   const [makeMintA, setMakeMintA] = useState("");
   const [makeMintB, setMakeMintB] = useState("");
   const [makeAmount, setMakeAmount] = useState("1");
   const [makeReceive, setMakeReceive] = useState("1");
 
+  // Escrow 列表与筛选。
   const [makerFilter, setMakerFilter] = useState("");
   const [loadingEscrows, setLoadingEscrows] = useState(false);
   const [escrows, setEscrows] = useState<EscrowState[]>([]);
@@ -87,6 +92,7 @@ export function EscrowClient() {
   const walletAddress = useMemo(() => publicKey?.toBase58() ?? "未连接", [publicKey]);
 
   useEffect(() => {
+    // 连接钱包后，默认把筛选地址设置为当前钱包，便于看“我创建的 escrow”。
     if (publicKey && makerFilter === "") {
       setMakerFilter(publicKey.toBase58());
     }
@@ -98,6 +104,7 @@ export function EscrowClient() {
         throw new Error("请先连接钱包");
       }
 
+      // 手动设置最新区块哈希并等待 confirmed，保证反馈更直观。
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
       transaction.feePayer = publicKey;
       transaction.recentBlockhash = blockhash;
@@ -125,6 +132,7 @@ export function EscrowClient() {
       setLoadingEscrows(true);
 
       try {
+        // 支持按 maker 地址过滤；空字符串表示不过滤。
         const trimmed = filterInput.trim();
         const maker = trimmed.length > 0 ? parsePublicKey(trimmed, "Maker 过滤地址") : undefined;
         const rows = await fetchEscrows(connection, maker);
@@ -145,6 +153,7 @@ export function EscrowClient() {
 
   const runAction = useCallback(
     async (actionKey: string, taskName: string, run: () => Promise<ActionResult>) => {
+      // Make/Take/Refund 共用的“执行-提示-刷新列表”封装。
       setActiveActionKey(actionKey);
       setLastSignature(null);
       setNotice({ type: "info", message: `${taskName} 交易发送中...` });
@@ -175,6 +184,7 @@ export function EscrowClient() {
       }
 
       await runAction("make", "Make", async () => {
+        // 表单字符串 -> 交易所需类型（PublicKey / bigint）。
         const seed = parseU64Input(makeSeed, "Seed");
         const mintA = parsePublicKey(makeMintA, "Mint A");
         const mintB = parsePublicKey(makeMintB, "Mint B");
@@ -219,6 +229,7 @@ export function EscrowClient() {
 
       const actionKey = `take:${escrow.address.toBase58()}`;
       await runAction(actionKey, "Take", async () => {
+        // Take 交易依赖列表项中的 maker/seed/mint 信息推导账户。
         const transaction = buildTakeTransaction({
           taker: publicKey,
           maker: escrow.maker,
@@ -268,6 +279,7 @@ export function EscrowClient() {
   );
 
   const onRefreshClick = useCallback(() => {
+    // 手动刷新同样走统一加载逻辑，错误直接反馈到 notice。
     void (async () => {
       try {
         await loadEscrows(makerFilter);

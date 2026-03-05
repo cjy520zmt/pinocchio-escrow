@@ -12,9 +12,12 @@ use pinocchio_token::state::{Mint, TokenAccount};
 use crate::state::{Escrow, EscrowSnapshot};
 use crate::{EscrowError, ID};
 
+// PDA 前缀，前后端都使用该 seed 推导 escrow 地址。
 pub(crate) const ESCROW_SEED: &[u8] = b"escrow";
 
+// Make 的 payload 为 3 个小端 u64：seed / receive / amount。
 const CREATE_IX_DATA_LEN: usize = size_of::<u64>() * 3;
+// SPL Token Account 中 `amount` 字段的固定偏移（字节 64..72）。
 const TOKEN_AMOUNT_OFFSET: usize = 64;
 const TOKEN_AMOUNT_END: usize = TOKEN_AMOUNT_OFFSET + size_of::<u64>();
 
@@ -30,6 +33,7 @@ pub(crate) fn parse_create_ix_data(data: &[u8]) -> Result<CreateInstructionData,
         return Err(EscrowError::InvalidInstruction.into());
     }
 
+    // 布局顺序必须和客户端编码一致。
     let seed = read_u64_le(&data[0..8])?;
     let receive = read_u64_le(&data[8..16])?;
     let amount = read_u64_le(&data[16..24])?;
@@ -58,6 +62,8 @@ pub(crate) fn load_and_validate_escrow(
     mint_a: &AccountView,
     mint_b: Option<&AccountView>,
 ) -> Result<EscrowSnapshot, ProgramError> {
+    // 1) 校验 escrow 内部记录与传入账户匹配；
+    // 2) 校验 escrow 地址确实由 seed/maker/bump 推导而来。
     let escrow_data = escrow_account.try_borrow()?;
     let escrow = Escrow::load(&escrow_data)?;
 
@@ -95,6 +101,7 @@ pub(crate) fn load_and_validate_escrow(
 }
 
 pub(crate) fn token_account_amount(token_account: &AccountView) -> Result<u64, ProgramError> {
+    // 直接按 SPL Token Account 的 amount 字段偏移读取，无需完整反序列化。
     let token_data = token_account.try_borrow()?;
     if token_data.len() < TOKEN_AMOUNT_END {
         return Err(EscrowError::InvalidAccountData.into());
@@ -113,6 +120,7 @@ pub(crate) fn create_program_account<'a>(
     seeds: &[Seed<'a>],
     space: usize,
 ) -> ProgramResult {
+    // 用 PDA 签名创建程序拥有的账户（owner = 当前程序 ID）。
     let lamports = Rent::get()?.try_minimum_balance(space)?;
     let signer = [Signer::from(seeds)];
 
@@ -127,6 +135,7 @@ pub(crate) fn create_program_account<'a>(
 }
 
 pub(crate) fn close_program_account(account: &AccountView, destination: &AccountView) -> ProgramResult {
+    // 先写哨兵字节，再转租金并关闭，避免账户被误当作有效状态再次读取。
     {
         let mut data = account.try_borrow_mut()?;
         data[0] = 0xff;
@@ -164,6 +173,7 @@ pub(crate) fn init_ata_if_needed(
     system_program: &AccountView,
     token_program: &AccountView,
 ) -> ProgramResult {
+    // ATA 必须是规范 PDA 地址。不存在则创建；存在则校验 owner 和长度。
     assert_ata_address(ata, owner, mint, token_program)?;
 
     if ata.data_len().eq(&0) {
@@ -234,6 +244,7 @@ pub(crate) fn assert_ata_address(
     mint: &AccountView,
     token_program: &AccountView,
 ) -> ProgramResult {
+    // ATA = PDA(authority, token_program, mint) under ATA program。
     let (expected, _) = Address::find_program_address(
         &[
             authority.address().as_ref(),
